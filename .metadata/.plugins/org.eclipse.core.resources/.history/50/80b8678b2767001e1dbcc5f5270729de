@@ -1,0 +1,28 @@
+package com.care.dbQuiz.board;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Param;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface IBoardMapper {
+
+	List<BoardDTO> boardForm(@Param("begin")int begin,@Param("end") int end);
+	
+	int totalCount();
+	
+	void boardWriteProc(BoardDTO board);
+	
+	BoardDTO boardContent(int no);
+
+	void incrementHits(int no);
+	
+	void boardDeleteProc(int n);
+
+	String boardDownload(int no);
+
+	int boardModifyProc(BoardDTO board);
+
+	
+}

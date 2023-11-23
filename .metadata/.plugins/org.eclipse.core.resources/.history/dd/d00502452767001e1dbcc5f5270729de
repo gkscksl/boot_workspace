@@ -1,0 +1,30 @@
+package com.hch.dbQuiz;
+
+import java.util.ArrayList;
+
+import org.apache.ibatis.annotations.Param;
+import org.springframework.stereotype.Repository;
+
+import com.care.dbQuiz.MemberDTO;
+
+@Repository
+public interface IMemberMapper {
+
+	int allCheck(String id);
+	
+	int registMember(MemberDTO memberDto);
+
+	MemberDTO login(String id);
+
+	ArrayList<MemberDTO> memberInfo(@Param("begin")int begin,@Param("end")int end,@Param("select")String select,@Param("search")String search);
+
+	int totalCount(@Param("select")String select,@Param("search")String search);
+	
+	//ArrayList<MemberDTO> getMember(@Param("select")String select,@Param("search")String search);
+	
+	int updateMember(MemberDTO memberDto);
+
+	int deleteMember(String id);
+	
+	
+}

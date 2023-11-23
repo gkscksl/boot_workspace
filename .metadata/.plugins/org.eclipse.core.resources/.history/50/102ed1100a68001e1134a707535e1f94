@@ -1,0 +1,23 @@
+# OracleDB connection settings
+#spring.datasource.url=jdbc:oracle:thin:@localhost:1521:xe
+#spring.datasource.username=itbank01
+#spring.datasource.password=itbank01
+#spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+
+spring.datasource.driver-class-name=org.mariadb.jdbc.Driver
+spring.datasource.username=admin
+spring.datasource.password=0302Illusion!
+spring.datasource.url=jdbc:mariadb://database-1.c09wn52dxb50.ap-northeast-2.rds.amazonaws.com:3306/DatabaseName
+
+# mybatis framework setting
+mybatis.mapper-locations=/mappers/*.xml
+
+# JSP settings
+spring.mvc.view.prefix=/jsp/
+spring.mvc.view.suffix=.jsp
+
+# file settings
+spring.servlet.multipart.max-file-size=10MB
+
+# server port settings
+server.port=80

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- SQL에 저장된 자료의 이름과 DTO에 멤버변수의 이름이 다르면
+	<resultMap type="DTO의 위치" id="매퍼에서 사용할 resultMap의 식별자">
+		<id column="프라이머리 키값" property="DTO의 변수명"/>	
+		<result column="SQL의 컬럼명" property="DTO의 변수명" /> 이렇게 매칭시켜주면 사용할 수 있음
+	</resultMap>
+	
+	아래의 매퍼에서 resultMap을 사용할 때 위에 id를 사용
+ -->
+
+<mapper namespace="com.hch.boot.member.IMemberMapper">
+	
+	<select id="allCheck">
+		SELECT count(*) FROM db_quiz where id=#{id}
+	</select>
+	
+	<select id="login">
+		SELECT * FROM db_quiz WHERE id=#{id}
+	</select>
+	
+	<insert id="registMember">
+		INSERT INTO db_quiz VALUES (#{id},#{pw},#{userName},#{address},#{mobile})
+	</insert>
+
+	<select id="memberInfo" resultType="com.hch.boot.MemberDTO">
+		<choose>
+			<when test="select == 'id'">
+				select AAA.*
+				from (select rownum as r, id, username, mobile from db_quiz where id
+				like '%'||#{search}||'%')AAA
+				where AAA.r between #{begin} and #{end}
+			</when>
+			<when test="select == 'mobile'">
+				select AAA.*
+				from (select rownum as r, id, username, mobile from db_quiz where mobile
+				like '%'||#{search}||'%')AAA
+				where AAA.r between #{begin} and #{end}
+			</when>
+			<otherwise>
+				select AAA.*
+				from (select rownum as r, id, username, mobile from db_quiz)AAA
+				where AAA.r between #{begin} and #{end}
+			</otherwise>
+		</choose>
+	</select>
+	
+	<!-- 
+	<select id="getMember" resultType="com.care.dbQuiz.MemberDTO">
+		<choose>
+			<when test="select == 'id'">
+				SELECT * FROM db_quiz WHERE id=#{search}
+			</when>
+			<otherwise>
+				SELECT * FROM db_quiz WHERE mobile=#{search}
+			</otherwise>
+		</choose>
+	</select>  -->
+	
+	<select id="totalCount">
+		<choose>
+			<when test="select == 'id'">
+				SELECT count(id) FROM db_quiz WHERE id like	'%'||#{search}||'%'
+			</when>
+			<when test="select == 'mobile'">
+				SELECT count(id) FROM db_quiz WHERE mobile like	'%'||#{search}||'%'
+			</when>
+			<otherwise>
+				SELECT count(id) FROM db_quiz
+			</otherwise>
+		</choose>
+	</select>
+		
+	<update id="updateMember">
+		UPDATE db_quiz SET pw=#{pw},username=#{userName} ,address=#{address}, mobile=#{mobile} WHERE id = #{id}
+	</update>
+
+	<delete id="deleteMember">
+		DELETE FROM db_quiz WHERE id=#{id}
+	</delete>
+</mapper>

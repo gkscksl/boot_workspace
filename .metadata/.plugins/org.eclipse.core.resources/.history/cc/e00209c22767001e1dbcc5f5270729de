@@ -1,0 +1,96 @@
+package com.hch.boot.member;
+
+import java.io.BufferedWriter;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Map;
+
+import javax.servlet.http.HttpSession;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+
+//REST API를 사용하여 (서버와 서버간의 대화) 사용자의 요청에따라 다른 웹서버에 토큰을 발급받아 사용(OAUTH2.0)
+@Service
+public class KakaoService {
+	private String accessToken;
+	
+	public void getAccessToken(String code) {
+		String reqUrl = "https://kauth.kakao.com/oauth/token";
+		String reqParam = "grant_type=authorization_code";
+		reqParam += "&client_id=73d542801f08db05e538399492a366bd";
+		reqParam += "&redirect_uri=http://localhost:8085/dbQuiz/kakaoLogin";
+		reqParam += "&code="+code;
+		
+		try {
+			URL url = new URL(reqUrl);
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn.setRequestMethod("POST");
+			conn.setDoOutput(true);	//데이터 전달을 위해 서버끼리 준비
+			
+			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+			bw.write(reqParam); //데이터 전송
+			bw.flush(); //데이터 전송 후 초기화
+						
+			//기본 outputStream을 통해 문자열로 처리할 수 있는 OutPutStreamWriter 변환 후 처리속도를 빠르게 하기 위한 BufferedWriter로 변환해서 사용
+			
+			InputStreamReader isr = new InputStreamReader(conn.getInputStream());
+			ObjectMapper om = new ObjectMapper();
+			Map<String, String> map = om.readValue(isr, new TypeReference<Map<String, String>>() {});
+			accessToken = map.get("access_token");
+			
+			System.out.println("access_token" + map.get("access_token"));
+			System.out.println(map);
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	@Autowired private HttpSession session;
+	public void getUserInfo() {
+		String reqUrl = "https://kapi.kakao.com/v2/user/me";
+		
+		try {
+			URL url = new URL(reqUrl); // POST 요청에 필요로 요구하는 파라미터 스트림을 통해 전송
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn.setRequestMethod("POST");
+			conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+			
+			int responseCode = conn.getResponseCode();	//값이 200이면 성공
+			System.out.println("responseCode" + responseCode);
+			
+			ObjectMapper om = new ObjectMapper();
+			JsonNode jsonNode = om.readTree(conn.getInputStream());
+			
+			System.out.println(jsonNode.get("kakao_account"));
+			System.out.println(jsonNode.get("kakao_account").get("profile").get("name"));
+			
+			//session.setAttribute("id", jsonNode.get("kakao_account").get("email"));
+			session.setAttribute("id", jsonNode.get("id"));
+			//jsonNode를 사용해서 이렇게 풀어쓰기 가능
+			
+		}catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	public void unlink() {
+		String reqUrl = "https://kapi.kakao.com/v1/user/unlink";
+		
+		try {
+			URL url = new URL(reqUrl);
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn.setRequestMethod("POST");
+			conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+			
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+}

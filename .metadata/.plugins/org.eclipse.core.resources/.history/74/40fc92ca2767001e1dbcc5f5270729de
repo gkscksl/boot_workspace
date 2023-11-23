@@ -1,0 +1,199 @@
+package com.hch.boot.member;
+
+import java.util.ArrayList;
+
+import javax.servlet.http.HttpSession;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.ui.Model;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import com.care.dbQuiz.MemberDTO;
+
+
+@Service
+public class MemberService {
+	@Autowired private IMemberMapper dao;
+	@Autowired private HttpSession session;
+	
+	public String pwCheck(String pw, String confirm) {
+		if(pw != confirm) {
+			return "두 비밀번호가 같지않습니다";
+		}
+		return "두 비밀번호가 같습니다";
+	}
+
+	public String allCheck(MemberDTO memberDto) {
+		int allCheck = dao.allCheck(memberDto.getId());
+		
+		if(allCheck == 0) {
+			return "없는 회원입니다";
+		}
+		return "이미 가입된 회원입니다";
+	}
+	
+	public String regist(MemberDTO memberDto, Model model) {
+		//암호화 과정
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		String secretPass = encoder.encode(memberDto.getPw());
+		memberDto.setPw(secretPass);
+		
+		System.out.println("암호문 : " + secretPass);
+		System.out.println("암호문길이 : " + secretPass.length());
+		/*
+		 * 암호문 : $2a$10$1eXbtFBb34oJ/wGHOtVTbO.b8I3j.biA5JmjrEMl0NwtTL80Zhn66	SALT값을 더한 암호값임
+		 * 암호문길이 : 60 -- pw컬럼 크기도 60으로 수정
+		 */
+		
+		int res = dao.registMember(memberDto);
+		model.addAttribute("res", res);
+		return "회원 등록 완료";
+	}
+
+	public String login(MemberDTO memberDto) {
+		if (memberDto.getId() == null || memberDto.getId().isEmpty()) {
+			return "아이디를 입력하세요";
+		}
+		if (memberDto.getPw() == null || memberDto.getPw().isEmpty()) {
+			return "비밀번호를 입력하세요";
+		}
+		
+		MemberDTO result = dao.login(memberDto.getId());
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		
+		//											입력한 비밀번호 ,  DB의 비밀번호
+		if (result != null && encoder.matches(memberDto.getPw(), result.getPw())==true) {
+			session.setAttribute("id", result.getId());
+			session.setAttribute("userName", result.getUserName());
+			session.setAttribute("address", result.getAddress());
+			session.setAttribute("mobile", result.getMobile());
+			return "로그인 성공";
+		}
+		return "아이디와 비밀번호를 확인해주세요";
+	}
+	
+	public void memberInfo(String select, String search, String cp, Model model) {
+		
+		int currentPage = 1;
+		try{
+			currentPage = Integer.parseInt(cp);
+		}catch(Exception e){
+			currentPage = 1; 
+		}
+		
+		if(select == null) {
+			select = "";
+		}
+		
+		int pageBlock = 3;
+		int end = pageBlock * currentPage;
+		int begin = end - pageBlock + 1;
+		
+		ArrayList<MemberDTO> members = dao.memberInfo(begin, end, select, search);
+		int totalCount = dao.totalCount(select, search);
+		if(totalCount == 0) {
+			return ;
+		}
+		
+		String url = "memberInfo?select="+select+"&search="+search+"&currentPage=";
+		String result = PageService.printPage(url, totalCount, pageBlock, currentPage);
+		
+		model.addAttribute("result", result);
+		model.addAttribute("members", members);
+		
+	}
+
+	/*
+	 * public ArrayList<MemberDTO> userInfo(String select, String search, Model
+	 * model) { ArrayList<MemberDTO> members = new ArrayList<>(); members =
+	 * dao.getMember(select, search); model.addAttribute("members", members); return
+	 * members; }
+	 */
+
+	public String userInfo(String id, Model model) {
+		String sessionId = (String)session.getAttribute("id");
+		
+		if(sessionId == null) {
+			return "로그인 후 이용하세요";
+		}
+		
+		if(sessionId.equals("admin") == false && sessionId.equals(id) == false) {
+			return "본인의 정보만 볼 수 있습니다";
+		}
+		
+		MemberDTO member = dao.login(id);	//같은 형식의 login이 있어서 (id값을 받아 출력) login을 활용
+		
+		if(member.getAddress() != null && member.getAddress().isEmpty() == false) {
+			String[] address = member.getAddress().split(",");
+			if(address.length == 2) {
+				model.addAttribute("postcode", address[0]);
+				member.setAddress(address[1]);
+			}
+			if(address.length == 3) {
+				model.addAttribute("postcode", address[0]);
+				member.setAddress(address[1]);
+				model.addAttribute("detailAddress", address[2]);
+			}
+		}
+		model.addAttribute("member", member);
+		return "회원 검색 완료";
+	}
+	
+	public void updateMember(MemberDTO memberDto, Model model) {
+		model.addAttribute("msg", "회원수정 실패");
+		
+		if(memberDto.getPw() == null || memberDto.getPw().trim().equals("")) {
+			model.addAttribute("msg", "비밀번호를 입력하세요");
+			return ;
+		}
+		if(memberDto.getPw().equals(model.getAttribute("confirm")) != true) {
+			model.addAttribute("msg", "두 비밀번호가 다릅니다");
+			return ;
+		}
+		if(memberDto.getUserName() == null || memberDto.getUserName().trim().equals("")) {
+			model.addAttribute("msg", "이름을 입력하세요");
+			return ;
+		}
+		
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		String secretPass = encoder.encode(memberDto.getPw());
+		memberDto.setPw(secretPass);
+		
+		int res = dao.updateMember(memberDto);
+		
+		if(res > 0) {
+			model.addAttribute("msg", "회원수정 성공");
+		}
+		
+	}
+
+	public void deleteMember(MemberDTO memberDto, Model model) {
+		model.addAttribute("msg", "회원삭제 실패");
+		
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		
+		MemberDTO check = dao.login(memberDto.getId());
+		if(check == null) {
+			model.addAttribute("msg", "로그인 후 이용하세요");
+			return;
+		}
+		if(memberDto.getPw() == null || memberDto.getPw().trim().equals("")) {
+			model.addAttribute("msg", "비밀번호를 입력하세요");
+			return ;
+		}
+		if(encoder.matches(memberDto.getPw(), check.getPw()) == false) {
+			model.addAttribute("msg", "두 비밀번호가 다릅니다");
+			return;
+		}
+		
+		if(encoder.matches(memberDto.getPw(), check.getPw()) == true) {
+			int res = dao.deleteMember(memberDto.getId());
+			if(res > 0) {
+				model.addAttribute("msg", "회원삭제 성공");
+			}
+		}
+	}
+	
+}

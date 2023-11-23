@@ -1,0 +1,12 @@
+# OracleDB connection settings
+spring.datasource.url=jdbc:oracle:thin:@//localhost:1521/XE
+spring.datasource.username=itbank01
+spring.datasource.password=itbank01
+spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+
+# mybatis framework setting
+mybatis.mapper-locations=/mappers/*.xml
+
+# JSP settings
+spring.mvc.view.prefix=/jsp/
+spring.mvc.view.suffix=.jsp

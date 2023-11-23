@@ -1,0 +1,184 @@
+package com.hch.boot.member;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import jakarta.servlet.http.HttpSession;
+
+
+@Controller
+public class MemberController {
+	//http://localhost:8085/dbQuiz/index
+	
+	@Autowired private MemberService service;
+	@Autowired private HttpSession session;
+	
+	@GetMapping("regist")
+	public String regist() {
+		return "member/regist";
+	}
+	
+	@PostMapping("pwCheck")
+	public String pwCheck(String pw, String confirm) {
+		String result = service.pwCheck(pw,confirm);
+		
+		if(result == "두 비밀번호가 같습니다") {
+			return "member.login";
+		}
+		return "member/regist";
+	}
+	
+	@PostMapping("allCheck")
+	public String allCheck(MemberDTO memberDto) {
+		String result = service.allCheck(memberDto);
+		
+		if(result == "이미 가입된 회원입니다") {
+			return "redirect:member/login";
+		}
+		 
+		return "member/regist";
+	}
+	
+	@PostMapping("registProc")
+	public String regist(MemberDTO memberDto,String postcode, String detailAddress, Model model,RedirectAttributes ra) {
+		if(memberDto.getAddress() != null && memberDto.getAddress().isEmpty() == false) {
+			memberDto.setAddress(postcode + "," + memberDto.getAddress() + "," + detailAddress);
+		}
+		String msg = service.regist(memberDto, model);
+		
+		if(msg.equals("회원 등록 완료")) {
+			ra.addFlashAttribute("msg", msg);
+			return "redirect:login";
+		}else {
+			msg = "회원 등록 실패. 다시 입력하세요";
+			model.addAttribute("msg", msg);
+			return "member/regist";
+		}
+	}
+
+	@RequestMapping("login")
+	public String login() {
+		return "member/login";
+	}
+	
+	@PostMapping("loginProc")
+	public String login(MemberDTO memberDto, Model model, RedirectAttributes ra) {
+		String msg = service.login(memberDto);
+		
+		if(msg.equals("로그인 성공")) {
+			ra.addFlashAttribute("msg",msg);
+			return "redirect:index";
+		}
+		
+		model.addAttribute("msg", msg);
+		return "member/login";
+	}
+	
+	@GetMapping("memberInfo")	//클릭하면 전체 회원을 보여주는 거로 구성하려했는데 자료를 주고받을 모델이 필요함. 모델을 넣어서 받고 처리. 그리고 arraylist로 배치
+	public String memberInfo(String select, String search,
+			@RequestParam(value="currentPage", required = false )String cp, Model model) {
+		service.memberInfo(select, search, cp, model);
+		return "member/memberInfo"; 
+	}
+	
+	@RequestMapping("userInfo")
+	public String userInfo(String id, Model model, RedirectAttributes ra) {
+		String msg = service.userInfo(id, model);
+		
+		if(msg.equals("회원 검색 완료")) {
+			return "member/userInfo";
+		}
+		
+		ra.addFlashAttribute("msg", msg);
+		return "redirect:memberInfo";
+	}
+	
+	/*
+	 * @RequestMapping("userInfo") public String memberInfo(String select, String
+	 * search, Model model) {
+	 * 
+	 * service.userInfo(select,search,model); model.getAttribute("members"); return
+	 * "member/userInfo"; }
+	 */
+	//memberinfo 검색(전체~특정) userinfo 클릭하면 그 사람 정보로 넘어들어감 --getmember
+	//이름 눌러서 자세한 정보 보는거랑 검색에서 하나가 부족함
+	
+	@RequestMapping("logout")
+	public String logout() {
+		kakaoService.unlink();
+		session.invalidate();
+		
+		return "redirect:index";
+	}
+	
+	@RequestMapping("update")
+	public String update() {
+		String sessionId = (String)session.getAttribute("id");
+		if(sessionId == null) {
+			return "redirect:login";
+		}
+		return "member/update";
+	}
+	
+	@PostMapping("updateProc")
+	public String updateProc(MemberDTO memberDto, String confirm, Model model) {
+		String sessionId = (String)session.getAttribute("id");
+		if(sessionId == null) {
+			return "redirect:login";
+		}
+		memberDto.setId(sessionId);
+		model.addAttribute("confirm", confirm);
+		service.updateMember(memberDto, model);
+		
+		if(model.getAttribute("msg") == "회원수정 성공") {
+			session.invalidate();
+			return "redirect:index";
+		}
+		return "member/update";
+	}
+	
+	@RequestMapping("delete")
+	public String delete() {
+		String sessionId = (String)session.getAttribute("id");
+		if(sessionId == null) {
+			return "redirect:login";
+		}
+		return "member/delete";
+	}
+	
+	@PostMapping("deleteProc")
+	public String deleteProc(MemberDTO memberDto, String confirm, Model model) {
+		String sessionId = (String)session.getAttribute("id");
+		if(sessionId == null) {
+			return "redirect:login";
+		}
+		
+		memberDto.setId(sessionId);
+		model.addAttribute("confirm", confirm);
+		service.deleteMember(memberDto, model);
+		
+		if(model.getAttribute("msg") == "회원삭제 성공") {
+			session.invalidate();
+			return "redirect:index";
+		}
+		return "member/delete";
+	}
+		
+	@Autowired private KakaoService kakaoService;
+	@RequestMapping("kakaoLogin")
+	public String kakaoLogin(String code) {
+		System.out.println("code : " + code);
+		kakaoService.getAccessToken(code);
+		kakaoService.getUserInfo();
+		
+		return "redirect:index";
+	}
+	
+	
+}
